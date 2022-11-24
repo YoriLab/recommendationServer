@@ -26,25 +26,32 @@ app.add_middleware(
 
 
 
-okt = Okt()
-with open('dish_vectorizer', 'rb') as f:  
+with open('dish_vectorizer', 'rb') as f:
   dish_vectorizer = pickle.load(f)
-with open('soup_vectorizer', 'rb') as f:  
+with open('soup_vectorizer', 'rb') as f:
   soup_vectorizer = pickle.load(f)
-with open('dish_bkmean', 'rb') as f:  
+with open('dish_bkmean', 'rb') as f:
   dish_bkmean = pickle.load(f)
-with open('soup_bkmean', 'rb') as f:  
+with open('soup_bkmean', 'rb') as f:
   soup_bkmean = pickle.load(f)
 with open('dish_cat_names.json', 'r', encoding='utf-8') as f:
   dish_cat_names = json.load(f)
 with open('soup_cat_names.json', 'r', encoding='utf-8') as f:
   soup_cat_names = json.load(f)
 
+with open('integrated.json', 'r', encoding='utf-8') as f:
+  integrated_ingre = json.load(f)
 
+def to_integrate(ing_str):
+  new_ingre = []
+  for ingre in ing_str.split(' '):
+    for key, inter_list in integrated_ingre.items():
+      if ingre in inter_list and ingre not in new_ingre:
+        new_ingre.append(key)
+  return [' '.join(new_ingre)]
 
 def to_vect(vectorizer, ing_str):
-    return vectorizer.transform([' '.join(okt.nouns(ing_str))])
-
+    return vectorizer.transform(to_integrate(ing_str))
 
 
 class RecommRequestBody(BaseModel):
@@ -56,27 +63,27 @@ class RecommRequestBody(BaseModel):
 
 
 class RecommForMeal(BaseModel):
-  whenToCook: int 
+  whenToCook: int
   dishNames: list[str] = []
   soupNames: list[str] = []
 
 class RecommForDay(BaseModel):
-  day: int 
+  day: int
   recomms: list[RecommForMeal] = []
 
 class RecommResponseBody(BaseModel):
   dishPointer: int = 0
   soupPointer: int = 0
   recomms: list[RecommForDay] = [] # 아,점,저,아,점,저 ... (반찬 이름들, 국이름들)
-  
+
 
 class ClusterRequestBody(BaseModel):
   likes: list[str]
 
 
 class ClusterResponseBody(BaseModel):
-  dishCluster: int 
-  soupCluser: int 
+  dishCluster: int
+  soupCluser: int
 
 
 
@@ -90,7 +97,7 @@ def root():
 
 @app.post('/users/cluster')
 def get_clusters(requestBody: ClusterRequestBody):
-  like_str = ' '.join(okt.nouns(' '.join(requestBody.likes)))
+  like_str = ' '.join(to_integrate(requestBody.likes))
   dish_cluster_label = int(dish_bkmean.predict(to_vect(dish_vectorizer, like_str))[0])
   soup_cluster_label = int(soup_bkmean.predict(to_vect(soup_vectorizer, like_str))[0])
   response = ClusterResponseBody(dishCluster=dish_cluster_label, soupCluser=soup_cluster_label)
@@ -124,7 +131,7 @@ def recommend(requestBody: RecommRequestBody):
 
       recommForDay.recomms.append(recommForMeal)
     response.recomms.append(recommForDay)
-  
+
   response.dishPointer = dishPointer
   response.soupPointer = soupPointer
 
