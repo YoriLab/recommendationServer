@@ -44,7 +44,7 @@ with open('integrated.json', 'r', encoding='utf-8') as f:
 
 def to_integrate(ing_str):
   new_ingre = []
-  for ingre in ing_str.split(' '):
+  for ingre in ing_str:
     for key, inter_list in integrated_ingre.items():
       if ingre in inter_list and ingre not in new_ingre:
         new_ingre.append(key)
